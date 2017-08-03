@@ -1,0 +1,10 @@
+<svg version="1.1" width="80px" height="80px" x="0px" y="0px" viewBox="0 0 60 60">
+    <ellipse fill="none" stroke="#FFF" cx="30" cy="30" rx="5.5" ry="18"/>
+    <ellipse fill="none" stroke="#FFF" cx="30" cy="30" rx="18" ry="5.5"/>
+    <circle fill="#FFF" cx="30" cy="30" r="1"/>
+    <ellipse fill="#FFF" cx="30" cy="1" rx="1" ry="1"/>
+    <ellipse fill="#FFF" cx="1" cy="30" rx="1" ry="1"/>
+    <ellipse fill="#FFF" cx="59" cy="30" rx="1" ry="1"/>
+    <ellipse fill="#FFF" cx="30" cy="59" rx="1" ry="1"/>
+    <circle fill="none" stroke="#FFF" stroke-width="2" cx="30" cy="30" r="25"/>
+</svg>

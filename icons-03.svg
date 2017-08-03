@@ -1,0 +1,7 @@
+<svg version="1.1" width="80px" height="80px" x="0px" y="0px" viewBox="0 0 60 60">
+    <ellipse fill="#FFF" cx="4" cy="30" rx="1" ry="1"/>
+    <ellipse fill="#FFF" cx="56" cy="30" rx="1" ry="1"/>
+    <path fill="none" stroke="#FFF" d="M4,30c0.8,6,1.6,12,3.2,12c3.2,0,3.2-24,6.5-24c3.2,0,3.2,24,6.5,24c3.2,0,3.2-24,6.5-24c3.2,0,3.2,24,6.5,24 c3.2,0,3.2-24,6.5-24c3.2,0,3.2,24,6.5,24c3.3,0,3.3-24,6.5-24c1.6,0,2.4,6,3.3,12"/>
+    <polyline fill="none" stroke="#FFF" stroke-width="2" points="4,13.7 4,4 56,4 56,13.7 "/>
+    <polyline fill="none" stroke="#FFF" stroke-width="2" points="56,46.5 56,56 4,56 4,46.5 "/>
+</svg>
