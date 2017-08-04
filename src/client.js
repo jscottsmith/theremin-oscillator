@@ -1,3 +1,4 @@
+import 'babel-polyfill';
 import Theremin from './Theremin';
 import './App.scss';
 

@@ -65,7 +65,7 @@ const oscOff = `
 |* Theremin Class
 \*------------------------------*/
 
-class Theremin {
+export default class Theremin {
     constructor(root) {
         this.root = root;
 
@@ -152,7 +152,6 @@ class Theremin {
     }
 
     setupMasterGain() {
-        console.log('master gain setup');
         this.masterGainNode = this.audioCtx.createGain();
         this.masterGainNode.connect(this.audioCtx.destination);
         this.masterGainNode.gain.value = 0;
@@ -465,7 +464,3 @@ class Visualizer {
         window.requestAnimationFrame(this.draw);
     };
 }
-
-const root = document.getElementById('root');
-
-const theremin = new Theremin(root);
