@@ -1,12 +1,35 @@
 import { GyroNorm } from './libs/gyronorm';
-import './components/App.scss';
+
+/*------------------------------*\
+|* Theremin Oscillator
+\*------------------------------*/
+
+/*
+ *
+ * NOTES:
+ *
+ * Pitch on the theremin is controlled by the pointers x position.
+ * Amplitude is controlled by the pointers y position.
+ * Mousedown or Touch to start the Oscillator. Toggle on/off with osc UI.
+ * Must view in debug mode to use the Gyroscope. Toggle on/off with gyro UI.
+ *
+ **/
+
+/*------------------------------*\
+|* Utils / Constants
+\*------------------------------*/
 
 const FREQ_LOW = 32.7031956625748294; // C1 in Hz
 const FREQ_HIGH = 1046.502261202394538; // C6 in Hz
+const DPR = window.devicePixelRatio || 1;
 
 function scaleBetween(value, newMin, newMax, oldMin, oldMax) {
     return (newMax - newMin) * (value - oldMin) / (oldMax - oldMin) + newMin;
 }
+
+/*------------------------------*\
+|* UI Icons
+\*------------------------------*/
 
 const gyroOnIcon = `
 <svg version="1.1" width="60px" height="60px" x="0px" y="0px" viewBox="0 0 60 60">
@@ -38,7 +61,11 @@ const oscOff = `
     <line fill="none" stroke="#FFF" stroke-width="2" x1="41" y1="19.8" x2="19" y2="41.8"/>
 </svg>`;
 
-export default class Theremin {
+/*------------------------------*\
+|* Theremin Class
+\*------------------------------*/
+
+class Theremin {
     constructor(root) {
         this.root = root;
 
@@ -46,8 +73,8 @@ export default class Theremin {
         this.renderDom();
         this.updateDom();
 
-        this.x = 0;
-        this.y = 0;
+        this.x = window.innerWidth / 2 * DPR;
+        this.y = window.innerWidth / 1.8 * DPR;
         this.w = window.innerWidth;
         this.h = window.innerHeight;
 
@@ -125,14 +152,42 @@ export default class Theremin {
     }
 
     setupMasterGain() {
+        console.log('master gain setup');
         this.masterGainNode = this.audioCtx.createGain();
         this.masterGainNode.connect(this.audioCtx.destination);
         this.masterGainNode.gain.value = 0;
     }
 
-    setGain() {
-        const gain = scaleBetween(this.y, 0, 1, 0, this.h);
-        this.masterGainNode.gain.value = gain;
+    setGain(value) {
+        // cancel any future value
+        const currentTime = this.audioCtx.currentTime;
+        this.masterGainNode.gain.cancelScheduledValues(currentTime);
+        this.masterGainNode.gain.value = value;
+    }
+
+    updateGain(nextGain, cb) {
+        if (typeof nextGain === 'undefined') {
+            nextGain = scaleBetween(this.y, 0, 1, 0, this.h);
+        }
+
+        const rampTime = 0.1;
+        const prevGain = this.masterGainNode.gain.value;
+        const currentTime = this.audioCtx.currentTime;
+        const endTime = currentTime + rampTime;
+        this.masterGainNode.gain.cancelScheduledValues(currentTime);
+        this.masterGainNode.gain.setValueAtTime(prevGain, currentTime);
+        this.masterGainNode.gain.linearRampToValueAtTime(nextGain, endTime);
+
+        // probably a nicer way to do this without callback nonsense...
+        if (typeof cb === 'function') {
+            if (this.gainTimeout) {
+                clearTimeout(this.gainTimeout);
+            }
+            this.gainTimeout = setTimeout(() => {
+                this.gainTimeout = null;
+                cb();
+            }, rampTime * 1000);
+        }
     }
 
     setFreq() {
@@ -141,11 +196,13 @@ export default class Theremin {
     }
 
     setCanvasSize() {
-        this.w = window.innerWidth;
-        this.h = window.innerHeight;
+        this.w = window.innerWidth * DPR;
+        this.h = window.innerHeight * DPR;
 
         this.canvas.width = this.w;
         this.canvas.height = this.h;
+        this.canvas.style.width = window.innerWidth + 'px';
+        this.canvas.style.height = window.innerHeight + 'px';
     }
 
     // Interaction and Event Handlers
@@ -162,14 +219,20 @@ export default class Theremin {
                 userInteracting: true,
             });
         }
-        this.play();
+
+        if (this.state.isPlaying) {
+            this.stop();
+        } else {
+            this.play();
+        }
     };
 
     handleInteractEnd = () => {
         this.stop();
     };
 
-    handlePlayButton = () => {
+    handlePlayButton = e => {
+        e.stopPropagation();
         this.state.isPlaying ? this.stop() : this.play();
     };
 
@@ -186,11 +249,6 @@ export default class Theremin {
         this.y = scaleBetween(data.do.beta, 0, this.w, -45, 45);
 
         this.updateOsc();
-
-        // data.do.alpha    ( deviceorientation event alpha value )  0 to 360.
-        // data.do.beta     ( deviceorientation event beta value ) -180 to 180.
-        // data.do.gamma    ( deviceorientation event gamma value ) -90 to 90.
-        // data.do.absolute ( deviceorientation event absolute value )
     };
 
     handleInteractMove = (event, touch) => {
@@ -202,11 +260,11 @@ export default class Theremin {
 
         if (event.targetTouches) {
             event.preventDefault();
-            this.x = event.targetTouches[0].clientX;
-            this.y = event.targetTouches[0].clientY;
+            this.x = event.targetTouches[0].clientX * DPR;
+            this.y = event.targetTouches[0].clientY * DPR;
         } else {
-            this.x = event.clientX;
-            this.y = event.clientY;
+            this.x = event.clientX * DPR;
+            this.y = event.clientY * DPR;
         }
 
         this.updateOsc();
@@ -215,16 +273,20 @@ export default class Theremin {
     // Audio Playback
 
     play = () => {
+        if (this.osc) {
+            this.osc.stop();
+            this.osc = null;
+        }
+
+        if (this.gainTimeout) return; // wait for any fading gains
+
         this.setState({
             isPlaying: true,
         });
 
-        this.setGain();
+        this.updateGain();
 
-        if (this.osc) {
-            this.stop();
-        }
-
+        // new osc
         this.osc = this.audioCtx.createOscillator();
         this.setFreq();
         this.osc.connect(this.masterGainNode);
@@ -234,19 +296,18 @@ export default class Theremin {
     };
 
     stop = () => {
-        this.setState({
-            isPlaying: false,
+        this.updateGain(0, () => {
+            this.setState({
+                isPlaying: false,
+            });
+            this.osc.stop();
+            this.osc = null;
         });
-
-        this.osc.stop();
-        this.osc = null;
-
-        return this.osc;
     };
 
     updateOsc() {
-        if (this.osc) {
-            this.setGain();
+        if (this.osc && !this.gainTimeout) {
+            this.updateGain();
             this.setFreq();
         }
     }
@@ -267,10 +328,15 @@ export default class Theremin {
     }
 }
 
+/*------------------------------*\
+|* Visualizer
+\*------------------------------*/
+
 class Visualizer {
     constructor(theremin) {
         this.theremin = theremin;
         this.ctx = this.theremin.canvas.getContext('2d');
+        this.ctx.scale(DPR, DPR);
         this.tick = 0;
 
         this.draw();
@@ -281,13 +347,13 @@ class Visualizer {
 
         this.ctx.beginPath();
         this.ctx.lineJoin = 'round';
-        this.ctx.lineWidth = 4;
-        this.ctx.strokeStyle = '#FFFFFF';
+        this.ctx.lineWidth = 2 * DPR;
+        this.ctx.strokeStyle = '#222';
         this.ctx.moveTo(0, xAxis);
 
         // Draw Oscillator or flat line
         if (this.theremin.osc) {
-            const phase = this.tick * Math.PI / 180 * this.theremin.w / 10;
+            const phase = this.tick * Math.PI / 180 * this.theremin.w / 8;
 
             const amplitude =
                 this.theremin.masterGainNode.gain.value * this.theremin.h / 4;
@@ -321,8 +387,8 @@ class Visualizer {
         // this.ctx.fillRect(0, 0, w, h);
 
         const r1 = Math.floor(scaleBetween(y, 50, 155, h, 0));
-        const g1 = Math.floor(scaleBetween(y, 25, 155, h, 0));
-        const b1 = Math.floor(scaleBetween(x, 50, 155, 0, w));
+        const g1 = Math.floor(scaleBetween(y, 200, 50, h, 0));
+        const b1 = Math.floor(scaleBetween(x, 100, 255, 0, w));
 
         const r2 = Math.floor(scaleBetween(y, 95, 255, 0, h));
         const g2 = Math.floor(scaleBetween(y, 155, 95, 0, h));
@@ -331,7 +397,7 @@ class Visualizer {
         const color1 = `rgb(${r1}, ${g1}, ${b1})`;
         const color2 = `rgb(${r2}, ${g2}, ${b2})`;
 
-        const r = Math.max(w, h);
+        const r = Math.max(w, h) * 2;
 
         const grad1 = this.ctx.createRadialGradient(w2, h2, r, x, y, 0);
         grad1.addColorStop(0, color1);
@@ -341,10 +407,10 @@ class Visualizer {
     }
 
     drawPoint() {
-        const r1 = 16;
-        const r2 = 2;
-        this.ctx.lineWidth = 2;
-        this.ctx.strokeStyle = '#ffffff';
+        const r1 = 16 * DPR;
+        const r2 = 2 * DPR;
+        this.ctx.lineWidth = 2 * DPR;
+        this.ctx.strokeStyle = '#222';
         this.ctx.beginPath();
         this.ctx.arc(
             this.theremin.x,
@@ -357,7 +423,7 @@ class Visualizer {
         this.ctx.closePath();
         this.ctx.stroke();
 
-        this.ctx.fillStyle = '#ffffff';
+        this.ctx.fillStyle = '#FFFFFF';
         this.ctx.beginPath();
         this.ctx.arc(
             this.theremin.x,
@@ -371,11 +437,27 @@ class Visualizer {
         this.ctx.fill();
     }
 
+    drawText() {
+        const ms = Math.min(this.theremin.w, this.theremin.h);
+        const size = ms / 12;
+        this.ctx.font = `900 italic ${size}px futura-pt, futura, sans-serif`;
+        this.ctx.textAlign = 'center';
+        this.ctx.fillStyle = 'white';
+
+        const copy = 'Theremin Oscillator';
+        this.ctx.fillText(
+            copy,
+            this.theremin.w / 2,
+            this.theremin.h / 2 + size / 3
+        );
+    }
+
     // Animation Loop
 
     draw = () => {
         this.drawBackground();
         this.drawOsc();
+        this.drawText();
         this.drawPoint();
 
         ++this.tick;
@@ -383,3 +465,7 @@ class Visualizer {
         window.requestAnimationFrame(this.draw);
     };
 }
+
+const root = document.getElementById('root');
+
+const theremin = new Theremin(root);

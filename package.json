@@ -1,36 +1,25 @@
 {
   "name": "theremin",
   "version": "0.0.0",
-  "description": "Theremin",
+  "description": "Theremin Oscillator",
   "repository": {
     "type": "git"
   },
   "main": "lib/index.js",
   "scripts": {
-    "dev": "jest && webpack --progress --colors --watch",
+    "dev": "webpack --progress --colors --watch",
     "dev-server": "node ./dist/server",
     "gh-pages": "NODE_ENV=production webpack --progress --colors",
-    "test": "jest",
     "prepublish": "babel ./src --out-dir ./lib --presets es2015,react,stage-0 --plugins babel-plugin-add-module-exports"
   },
-  "jest": {
-    "modulePaths": [
-      "<rootDir>/src/"
-    ]
-  },
   "keywords": [
-    "react",
-    "parallax",
-    "scroll",
-    "component"
+    "theremin",
+    "oscillator"
   ],
   "author": "J Scott Smith",
   "license": "ISC",
   "dependencies": {
-    "gyronorm": "^2.0.6",
-    "react": "^15.4.2",
-    "react-dom": "^15.4.2",
-    "react-proptypes": "^1.0.0"
+    "gyronorm": "^2.0.6"
   },
   "devDependencies": {
     "babel-cli": "^6.24.1",
@@ -46,7 +35,6 @@
     "css-loader": "^0.28.0",
     "express": "^4.14.1",
     "file-loader": "^0.11.1",
-    "jest": "^20.0.4",
     "node-sass": "^4.5.0",
     "postcss-loader": "^1.3.3",
     "raw-loader": "^0.5.1",
